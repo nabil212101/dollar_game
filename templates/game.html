@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>لعبة الدولار اليومي</title>
+</head>
+<body>
+    <h1>مرحباً بك في لعبة الدولار اليومي!</h1>
+    <p id="status">جارٍ التحقق من حسابك...</p>
+    <button id="claimBtn" disabled>احصل على دولار</button>
+    <p id="balance">رصيدك: $0</p>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get("user_id");
+
+        async function checkStatus() {
+            const res = await fetch(`/api/status?user_id=${userId}`);
+            const data = await res.json();
+            document.getElementById("balance").innerText = "رصيدك: $" + data.balance;
+            if (data.can_claim) {
+                document.getElementById("status").innerText = "يمكنك الحصول على دولار الآن!";
+                document.getElementById("claimBtn").disabled = false;
+            } else {
+                document.getElementById("status").innerText = "لقد حصلت على دولار اليوم. عد لاحقًا!";
+            }
+        }
+
+        document.getElementById("claimBtn").onclick = async () => {
+            const res = await fetch(`/api/claim?user_id=${userId}`, { method: "POST" });
+            const data = await res.json();
+            alert(data.message);
+            checkStatus();
+        };
+
+        checkStatus();
+    </script>
+</body>
+</html>
