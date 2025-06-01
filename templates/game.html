@@ -1,119 +1,96 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="utf-8">
-    <title>لعبة الدولار اليومي</title>
+    <meta charset="UTF-8">
+    <title>لعبة الدولار كل 5 دقائق</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <style>
         body {
-            background: linear-gradient(to right, #00c6ff, #0072ff);
-            font-family: 'Arial', sans-serif;
-            color: white;
+            direction: rtl;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
             text-align: center;
-            padding-top: 100px;
-            margin: 0;
+            padding: 50px;
         }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
+        #container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
         }
-
-        p {
-            font-size: 1.5em;
-            margin: 10px 0;
-        }
-
-        #claimBtn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2em;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        #claimBtn:disabled {
-            background-color: #888;
-            cursor: not-allowed;
-        }
-
-        #balance {
-            font-weight: bold;
-            margin-top: 30px;
-            font-size: 1.7em;
-        }
-
-        #gameArea {
-            display: none;
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>مرحباً بك في لعبة الدولار اليومي!</h1>
+    <div id="container">
+        <h1>💰 لعبة ربح دولار كل 5 دقائق</h1>
 
-    <!-- Telegram Login Widget -->
-    <div id="telegramLogin"></div>
-    <script async src="https://telegram.org/js/telegram-widget.js?7"
-            data-telegram-login="YourBotUsername"  <!-- غيّرها باسم بوتك -->
-            data-size="large"
-            data-userpic="false"
-            data-request-access="write"
-            data-onauth="onTelegramAuth">
-    </script>
+        <div id="login-section">
+            <input type="number" id="userId" placeholder="أدخل رقم المستخدم الخاص بك">
+            <button onclick="login()">تسجيل الدخول</button>
+        </div>
 
-    <!-- منطقة اللعبة -->
-    <div id="gameArea">
-        <p id="status">جارٍ التحقق من حسابك...</p>
-        <button id="claimBtn" disabled>احصل على دولار</button>
-        <p id="balance">رصيدك: $0</p>
+        <div id="game-section" style="display:none;">
+            <p>رصيدك الحالي: <span id="balance">0</span> 💵</p>
+            <p id="status"></p>
+            <button id="claimBtn" onclick="claim()">احصل على دولار</button>
+        </div>
     </div>
 
     <script>
-        function onTelegramAuth(user) {
-            // حفظ user_id في localStorage
-            localStorage.setItem("user_id", user.id);
-            // إرسال بيانات المستخدم إلى الخادم
+        let userId = null;
+
+        function login() {
+            userId = document.getElementById("userId").value;
+            if (!userId) {
+                alert("الرجاء إدخال رقم المستخدم.");
+                return;
+            }
+
             fetch("/api/login", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(user)
-            }).then(() => {
-                document.getElementById("telegramLogin").style.display = "none";
-                document.getElementById("gameArea").style.display = "block";
-                checkStatus();
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ id: parseInt(userId) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("game-section").style.display = "block";
+                    checkStatus();
+                }
             });
         }
 
-        const userId = localStorage.getItem("user_id");
-
-        if (userId) {
-            document.getElementById("telegramLogin").style.display = "none";
-            document.getElementById("gameArea").style.display = "block";
-            checkStatus();
+        function checkStatus() {
+            fetch(`/api/status?user_id=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("balance").innerText = data.balance;
+                document.getElementById("claimBtn").disabled = !data.can_claim;
+                document.getElementById("status").innerText = data.can_claim
+                    ? "يمكنك المطالبة الآن ✅"
+                    : "لا يمكنك المطالبة الآن، انتظر 5 دقائق ⏳";
+            });
         }
 
-        async function checkStatus() {
-            const res = await fetch(`/api/status?user_id=${userId}`);
-            const data = await res.json();
-            document.getElementById("balance").innerText = "رصيدك: $" + data.balance;
-            if (data.can_claim) {
-                document.getElementById("status").innerText = "يمكنك الحصول على دولار الآن!";
-                document.getElementById("claimBtn").disabled = false;
-            } else {
-                document.getElementById("status").innerText = "لقد حصلت على دولار مؤخرًا. عد لاحقًا!";
-            }
+        function claim() {
+            fetch(`/api/claim?user_id=${userId}`, {
+                method: "POST"
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                checkStatus();
+            });
         }
-
-        document.getElementById("claimBtn").onclick = async () => {
-            const res = await fetch(`/api/claim?user_id=${userId}`, { method: "POST" });
-            const data = await res.json();
-            alert(data.message);
-            checkStatus();
-        };
     </script>
 </body>
 </html>
-
-
