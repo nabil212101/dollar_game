@@ -44,17 +44,55 @@
             margin-top: 30px;
             font-size: 1.7em;
         }
+
+        #gameArea {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <h1>مرحباً بك في لعبة الدولار اليومي!</h1>
-    <p id="status">جارٍ التحقق من حسابك...</p>
-    <button id="claimBtn" disabled>احصل على دولار</button>
-    <p id="balance">رصيدك: $0</p>
+
+    <!-- Telegram Login Widget -->
+    <div id="telegramLogin"></div>
+    <script async src="https://telegram.org/js/telegram-widget.js?7"
+            data-telegram-login="YourBotUsername"  <!-- غيّرها باسم بوتك -->
+            data-size="large"
+            data-userpic="false"
+            data-request-access="write"
+            data-onauth="onTelegramAuth">
+    </script>
+
+    <!-- منطقة اللعبة -->
+    <div id="gameArea">
+        <p id="status">جارٍ التحقق من حسابك...</p>
+        <button id="claimBtn" disabled>احصل على دولار</button>
+        <p id="balance">رصيدك: $0</p>
+    </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const userId = params.get("user_id");
+        function onTelegramAuth(user) {
+            // حفظ user_id في localStorage
+            localStorage.setItem("user_id", user.id);
+            // إرسال بيانات المستخدم إلى الخادم
+            fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(user)
+            }).then(() => {
+                document.getElementById("telegramLogin").style.display = "none";
+                document.getElementById("gameArea").style.display = "block";
+                checkStatus();
+            });
+        }
+
+        const userId = localStorage.getItem("user_id");
+
+        if (userId) {
+            document.getElementById("telegramLogin").style.display = "none";
+            document.getElementById("gameArea").style.display = "block";
+            checkStatus();
+        }
 
         async function checkStatus() {
             const res = await fetch(`/api/status?user_id=${userId}`);
@@ -64,7 +102,7 @@
                 document.getElementById("status").innerText = "يمكنك الحصول على دولار الآن!";
                 document.getElementById("claimBtn").disabled = false;
             } else {
-                document.getElementById("status").innerText = "لقد حصلت على دولار اليوم. عد لاحقًا!";
+                document.getElementById("status").innerText = "لقد حصلت على دولار مؤخرًا. عد لاحقًا!";
             }
         }
 
@@ -74,9 +112,8 @@
             alert(data.message);
             checkStatus();
         };
-
-        checkStatus();
     </script>
 </body>
 </html>
+
 
