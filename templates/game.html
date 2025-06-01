@@ -1,8 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
     <meta charset="utf-8">
     <title>لعبة الدولار اليومي</title>
+    <style>
+        body {
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            text-align: center;
+            padding-top: 100px;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+
+        #claimBtn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #claimBtn:disabled {
+            background-color: #888;
+            cursor: not-allowed;
+        }
+
+        #balance {
+            font-weight: bold;
+            margin-top: 30px;
+            font-size: 1.7em;
+        }
+    </style>
 </head>
 <body>
     <h1>مرحباً بك في لعبة الدولار اليومي!</h1>
@@ -37,3 +79,4 @@
     </script>
 </body>
 </html>
+
