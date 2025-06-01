@@ -1,29 +1,53 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, g
 import sqlite3
 from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
+DATABASE = 'game.db'
 
-conn = sqlite3.connect('game.db', check_same_thread=False)
-c = conn.cursor()
-c.execute("""CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    balance INTEGER DEFAULT 0,
-    last_claim TEXT
-)""")
-conn.commit()
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+def init_db():
+    db = get_db()
+    c = db.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        balance INTEGER DEFAULT 0,
+        last_claim TEXT
+    )""")
+    db.commit()
 
 def get_user(user_id):
+    db = get_db()
+    c = db.cursor()
     c.execute("SELECT balance, last_claim FROM users WHERE user_id=?", (user_id,))
     row = c.fetchone()
     if not row:
         c.execute("INSERT INTO users (user_id, balance, last_claim) VALUES (?, ?, ?)",
                   (user_id, 0, '1970-01-01T00:00:00'))
-        conn.commit()
+        db.commit()
         return 0, datetime(1970, 1, 1)
     balance, last_claim = row
     return balance, datetime.fromisoformat(last_claim)
+
+@app.before_first_request
+def before_first_request():
+    init_db()
+
+@app.route("/")
+def home():
+    return render_template("game.html")
 
 @app.route("/game")
 def game():
@@ -31,15 +55,21 @@ def game():
 
 @app.route("/api/status")
 def status():
-    user_id = int(request.args.get("user_id"))
+    user_id = request.args.get("user_id")
+    if not user_id or not user_id.isdigit():
+        return jsonify({"error": "user_id غير صالح"}), 400
+    user_id = int(user_id)
     balance, last_claim = get_user(user_id)
     now = datetime.now()
-    can_claim = now - last_claim >= timedelta(minutes=5)  # اللعب كل 5 دقائق
+    can_claim = now - last_claim >= timedelta(minutes=5)
     return jsonify({"balance": balance, "can_claim": can_claim})
 
 @app.route("/api/claim", methods=["POST"])
 def claim():
-    user_id = int(request.args.get("user_id"))
+    user_id = request.args.get("user_id")
+    if not user_id or not user_id.isdigit():
+        return jsonify({"error": "user_id غير صالح"}), 400
+    user_id = int(user_id)
     balance, last_claim = get_user(user_id)
     now = datetime.now()
     if now - last_claim < timedelta(minutes=5):
@@ -49,24 +79,26 @@ def claim():
         seconds = seconds % 60
         return jsonify({"message": f"يجب الانتظار {minutes} دقيقة و {seconds} ثانية قبل المحاولة مرة أخرى!"})
     new_balance = balance + 1
+    db = get_db()
+    c = db.cursor()
     c.execute("UPDATE users SET balance=?, last_claim=? WHERE user_id=?",
               (new_balance, now.isoformat(), user_id))
-    conn.commit()
+    db.commit()
     return jsonify({"message": "تم إضافة دولار إلى رصيدك!"})
 
-# إضافة هذا المسار لتسجيل المستخدم عند تسجيل الدخول بتليغرام
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json()
     user_id = data.get("id")
-    if not user_id:
-        return jsonify({"error": "user_id مطلوب"}), 400
-    # تحقق من وجود المستخدم، وإذا لم يكن موجودًا يتم إضافته
+    if not user_id or not isinstance(user_id, int):
+        return jsonify({"error": "user_id مطلوب ويجب أن يكون عددًا صحيحًا"}), 400
+    db = get_db()
+    c = db.cursor()
     c.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
     if not c.fetchone():
         c.execute("INSERT INTO users (user_id, balance, last_claim) VALUES (?, ?, ?)",
                   (user_id, 0, '1970-01-01T00:00:00'))
-        conn.commit()
+        db.commit()
     return jsonify({"message": "تم تسجيل الدخول بنجاح!"})
 
 if __name__ == "__main__":
