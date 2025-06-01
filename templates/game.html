@@ -30,9 +30,8 @@
     <div id="container">
         <h1>💰 لعبة ربح دولار كل 5 دقائق</h1>
 
-        <div id="login-section">
-            <input type="number" id="userId" placeholder="أدخل رقم المستخدم الخاص بك">
-            <button onclick="login()">تسجيل الدخول</button>
+        <div id="welcome-section">
+            <p id="welcome-message">جاري تسجيل الدخول...</p>
         </div>
 
         <div id="game-section" style="display:none;">
@@ -45,24 +44,27 @@
     <script>
         let userId = null;
 
-        function login() {
-            userId = document.getElementById("userId").value;
-            if (!userId) {
-                alert("الرجاء إدخال رقم المستخدم.");
-                return;
+        // توليد رقم مستخدم عشوائي لكل جهاز وتخزينه
+        function generateUserId() {
+            let savedId = localStorage.getItem("userId");
+            if (!savedId) {
+                savedId = Math.floor(Math.random() * 100000000);
+                localStorage.setItem("userId", savedId);
             }
+            return savedId;
+        }
 
+        function login() {
+            userId = generateUserId();
             fetch("/api/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: parseInt(userId) })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.message) {
-                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("welcome-message").innerText = "مرحبًا بك! ✅";
                     document.getElementById("game-section").style.display = "block";
                     checkStatus();
                 }
@@ -91,6 +93,9 @@
                 checkStatus();
             });
         }
+
+        // تسجيل الدخول تلقائيًا عند تحميل الصفحة
+        window.onload = login;
     </script>
 </body>
 </html>
