@@ -2,7 +2,7 @@ import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-API_URL = "http://your-server-address"  # ضع رابط السيرفر الخاص بك هنا مع البورت إذا وجد، مثل http://localhost:5000
+API_URL = "https://dollar-game.onrender.com"  # ضع رابط السيرفر الخاص بك هنا مع البورت إذا وجد، مثل http://localhost:5000
 
 BOT_TOKEN = "7095959949:AAE3ujd3cazjhCj2sc0XcXLPKBP0dKVzwn4"
 
