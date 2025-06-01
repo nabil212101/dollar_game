@@ -1,3 +1,6 @@
+import flask
+print("Flask version:", flask.__version__)
+
 from flask import Flask, request, jsonify, render_template, g
 import sqlite3
 from datetime import datetime, timedelta
