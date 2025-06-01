@@ -36,7 +36,7 @@ def status():
     user_id = int(request.args.get("user_id"))
     balance, last_claim = get_user(user_id)
     now = datetime.now()
-    can_claim = now - last_claim >= timedelta(days=1)
+    can_claim = now - last_claim >= timedelta(minutes=5)  # تعديل هنا
     return jsonify({"balance": balance, "can_claim": can_claim})
 
 @app.route("/api/claim", methods=["POST"])
@@ -44,8 +44,12 @@ def claim():
     user_id = int(request.args.get("user_id"))
     balance, last_claim = get_user(user_id)
     now = datetime.now()
-    if now - last_claim < timedelta(days=1):
-        return jsonify({"message": "لقد حصلت على دولار بالفعل اليوم!"})
+    if now - last_claim < timedelta(minutes=5):  # تعديل هنا أيضاً
+        remaining = timedelta(minutes=5) - (now - last_claim)
+        seconds = int(remaining.total_seconds())
+        minutes = seconds // 60
+        seconds = seconds % 60
+        return jsonify({"message": f"يجب الانتظار {minutes} دقيقة و {seconds} ثانية قبل المحاولة مرة أخرى!"})
     new_balance = balance + 1
     c.execute("UPDATE users SET balance=?, last_claim=? WHERE user_id=?",
               (new_balance, now.isoformat(), user_id))
@@ -55,4 +59,5 @@ def claim():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # أخذ المنفذ من البيئة
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
