@@ -1,11 +1,10 @@
-import os
 from flask import Flask, request, jsonify, render_template
 import sqlite3
 from datetime import datetime, timedelta
+import os
 
 app = Flask(__name__)
 
-# قاعدة البيانات
 conn = sqlite3.connect('game.db', check_same_thread=False)
 c = conn.cursor()
 c.execute("""CREATE TABLE IF NOT EXISTS users (
@@ -15,7 +14,6 @@ c.execute("""CREATE TABLE IF NOT EXISTS users (
 )""")
 conn.commit()
 
-# دالة استرجاع بيانات المستخدم
 def get_user(user_id):
     c.execute("SELECT balance, last_claim FROM users WHERE user_id=?", (user_id,))
     row = c.fetchone()
@@ -36,7 +34,7 @@ def status():
     user_id = int(request.args.get("user_id"))
     balance, last_claim = get_user(user_id)
     now = datetime.now()
-    can_claim = now - last_claim >= timedelta(minutes=5)  # تعديل هنا
+    can_claim = now - last_claim >= timedelta(minutes=5)  # اللعب كل 5 دقائق
     return jsonify({"balance": balance, "can_claim": can_claim})
 
 @app.route("/api/claim", methods=["POST"])
@@ -44,7 +42,7 @@ def claim():
     user_id = int(request.args.get("user_id"))
     balance, last_claim = get_user(user_id)
     now = datetime.now()
-    if now - last_claim < timedelta(minutes=5):  # تعديل هنا أيضاً
+    if now - last_claim < timedelta(minutes=5):
         remaining = timedelta(minutes=5) - (now - last_claim)
         seconds = int(remaining.total_seconds())
         minutes = seconds // 60
@@ -56,8 +54,21 @@ def claim():
     conn.commit()
     return jsonify({"message": "تم إضافة دولار إلى رصيدك!"})
 
+# إضافة هذا المسار لتسجيل المستخدم عند تسجيل الدخول بتليغرام
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    user_id = data.get("id")
+    if not user_id:
+        return jsonify({"error": "user_id مطلوب"}), 400
+    # تحقق من وجود المستخدم، وإذا لم يكن موجودًا يتم إضافته
+    c.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
+    if not c.fetchone():
+        c.execute("INSERT INTO users (user_id, balance, last_claim) VALUES (?, ?, ?)",
+                  (user_id, 0, '1970-01-01T00:00:00'))
+        conn.commit()
+    return jsonify({"message": "تم تسجيل الدخول بنجاح!"})
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # أخذ المنفذ من البيئة
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
