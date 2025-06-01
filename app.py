@@ -22,7 +22,7 @@ def close_connection(exception):
         db.close()
 
 def init_db():
-    db = get_db()
+    db = sqlite3.connect(DATABASE)  # هنا فتح اتصال مستقل لتهيئة القاعدة
     c = db.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
@@ -30,6 +30,7 @@ def init_db():
         last_claim TEXT
     )""")
     db.commit()
+    db.close()
 
 def get_user(user_id):
     db = get_db()
@@ -43,10 +44,6 @@ def get_user(user_id):
         return 0, datetime(1970, 1, 1)
     balance, last_claim = row
     return balance, datetime.fromisoformat(last_claim)
-
-@app.before_first_request
-def before_first_request():
-    init_db()
 
 @app.route("/")
 def home():
@@ -105,5 +102,6 @@ def login():
     return jsonify({"message": "تم تسجيل الدخول بنجاح!"})
 
 if __name__ == "__main__":
+    init_db()  # تهيئة قاعدة البيانات عند بدء التطبيق مباشرة
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
